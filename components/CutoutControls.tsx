@@ -1,30 +1,56 @@
 import {
+  CUTOUT_PAIR_LABELS,
+  CUTOUT_PAIR_NAMES,
   FACE_LABELS,
   FACE_NAMES,
   getCutoutPointCount,
+  getCutoutTargetFaces,
+  getCutoutTargetLabel,
 } from "@/lib/geometry/cutouts";
-import type { CutoutSet, FaceCutout, FaceName } from "@/lib/types";
+import type {
+  CutoutAssignmentMode,
+  CutoutPairName,
+  CutoutSet,
+  CutoutTarget,
+  FaceCutout,
+  FaceName,
+} from "@/lib/types";
 
 type CutoutControlsProps = {
   activeFace: FaceName;
+  activePair: CutoutPairName;
+  assignmentMode: CutoutAssignmentMode;
   cutouts: CutoutSet;
   onActiveFaceChange: (face: FaceName) => void;
-  onChange: (face: FaceName, cutout: FaceCutout) => void;
-  onClear: (face: FaceName) => void;
-  onSvgUpload: (face: FaceName, file: File) => void;
+  onActivePairChange: (pair: CutoutPairName) => void;
+  onAssignmentModeChange: (mode: CutoutAssignmentMode) => void;
+  onChange: (target: CutoutTarget, cutout: FaceCutout) => void;
+  onClear: (target: CutoutTarget) => void;
+  onSvgUpload: (target: CutoutTarget, file: File) => void;
 };
 
 export function CutoutControls({
   activeFace,
+  activePair,
+  assignmentMode,
   cutouts,
   onActiveFaceChange,
+  onActivePairChange,
+  onAssignmentModeChange,
   onChange,
   onClear,
   onSvgUpload,
 }: CutoutControlsProps) {
-  const cutout = cutouts[activeFace];
+  const activeTarget = assignmentMode === "faces" ? activeFace : activePair;
+  const targetFaces = getCutoutTargetFaces(activeTarget);
+  const cutout = cutouts[targetFaces[0]];
+  const isMixedPair =
+    targetFaces.length > 1 &&
+    targetFaces.some(
+      (face) => getCutoutSignature(cutouts[face]) !== getCutoutSignature(cutout),
+    );
   const pointCount = getCutoutPointCount(cutout);
-  const fileInputId = `cutout-upload-${activeFace}`;
+  const fileInputId = `cutout-upload-${activeTarget}`;
 
   return (
     <div className="grid gap-4 border-t border-zinc-200 pt-5">
@@ -32,21 +58,54 @@ export function CutoutControls({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
           SVG cutouts
         </p>
-        <div className="grid grid-cols-4 gap-1 rounded-md bg-zinc-100 p-1">
-          {FACE_NAMES.map((face) => (
-            <button
-              className={`h-9 rounded px-2 text-xs font-semibold transition ${
-                activeFace === face
-                  ? "bg-white text-zinc-950 shadow-sm"
-                  : "text-zinc-600 hover:text-zinc-950"
-              }`}
-              key={face}
-              onClick={() => onActiveFaceChange(face)}
-              type="button"
-            >
-              {FACE_LABELS[face]}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-1 rounded-md bg-zinc-100 p-1">
+          <button
+            className={`h-9 rounded px-2 text-xs font-semibold transition ${
+              assignmentMode === "faces"
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-950"
+            }`}
+            onClick={() => onAssignmentModeChange("faces")}
+            type="button"
+          >
+            Each face
+          </button>
+          <button
+            className={`h-9 rounded px-2 text-xs font-semibold transition ${
+              assignmentMode === "pairs"
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-950"
+            }`}
+            onClick={() => onAssignmentModeChange("pairs")}
+            type="button"
+          >
+            Opposite pairs
+          </button>
+        </div>
+        <div
+          className={`grid gap-1 rounded-md bg-zinc-100 p-1 ${
+            assignmentMode === "faces" ? "grid-cols-4" : "grid-cols-2"
+          }`}
+        >
+          {assignmentMode === "faces" ? (
+            FACE_NAMES.map((face) => (
+              <TargetButton
+                isActive={activeFace === face}
+                key={face}
+                label={FACE_LABELS[face]}
+                onClick={() => onActiveFaceChange(face)}
+              />
+            ))
+          ) : (
+            CUTOUT_PAIR_NAMES.map((pair) => (
+              <TargetButton
+                isActive={activePair === pair}
+                key={pair}
+                label={CUTOUT_PAIR_LABELS[pair]}
+                onClick={() => onActivePairChange(pair)}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -54,10 +113,13 @@ export function CutoutControls({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-zinc-950">
-              {FACE_LABELS[activeFace]} wall
+              {getCutoutTargetLabel(activeTarget)}
+              {assignmentMode === "faces" ? " wall" : " walls"}
             </p>
             <p className="text-xs leading-5 text-zinc-500">
-              Dark filled SVG shapes become through-holes.
+              {assignmentMode === "pairs"
+                ? "Edits apply to both parallel faces."
+                : "Dark filled SVG shapes become through-holes."}
             </p>
           </div>
           <label className="flex items-center gap-2 text-sm text-zinc-700">
@@ -66,7 +128,7 @@ export function CutoutControls({
               className="h-4 w-4 accent-teal-700"
               disabled={cutout.shapes.length === 0 && !cutout.error}
               onChange={(event) =>
-                onChange(activeFace, {
+                onChange(activeTarget, {
                   ...cutout,
                   enabled: event.target.checked,
                 })
@@ -76,6 +138,13 @@ export function CutoutControls({
             Enabled
           </label>
         </div>
+
+        {isMixedPair ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            This pair has different face settings. The next change here will sync
+            both faces.
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <label
@@ -92,17 +161,17 @@ export function CutoutControls({
               const file = event.target.files?.[0];
 
               if (file) {
-                onSvgUpload(activeFace, file);
+                onSvgUpload(activeTarget, file);
               }
 
               event.currentTarget.value = "";
             }}
             type="file"
           />
-          {(cutout.fileName || cutout.error) && (
+          {(cutout.fileName || cutout.error || isMixedPair) && (
             <button
               className="h-10 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-500 hover:text-zinc-950"
-              onClick={() => onClear(activeFace)}
+              onClick={() => onClear(activeTarget)}
               type="button"
             >
               Clear
@@ -128,7 +197,7 @@ export function CutoutControls({
               className="h-10 w-24 rounded-md border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-teal-600 focus:ring-3 focus:ring-teal-100"
               min={1}
               onChange={(event) =>
-                onChange(activeFace, {
+                onChange(activeTarget, {
                   ...cutout,
                   margin: Number(event.target.value),
                 })
@@ -149,7 +218,7 @@ export function CutoutControls({
               max={100}
               min={10}
               onChange={(event) =>
-                onChange(activeFace, {
+                onChange(activeTarget, {
                   ...cutout,
                   scale: Number(event.target.value) / 100,
                 })
@@ -166,4 +235,40 @@ export function CutoutControls({
       </div>
     </div>
   );
+}
+
+function TargetButton({
+  isActive,
+  label,
+  onClick,
+}: {
+  isActive: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`h-9 rounded px-2 text-xs font-semibold transition ${
+        isActive
+          ? "bg-white text-zinc-950 shadow-sm"
+          : "text-zinc-600 hover:text-zinc-950"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
+  );
+}
+
+function getCutoutSignature(cutout: FaceCutout) {
+  return JSON.stringify({
+    enabled: cutout.enabled,
+    error: cutout.error ?? "",
+    fileName: cutout.fileName ?? "",
+    margin: cutout.margin,
+    points: getCutoutPointCount(cutout),
+    scale: cutout.scale,
+    shapes: cutout.shapes.length,
+  });
 }

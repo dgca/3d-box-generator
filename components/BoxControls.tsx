@@ -2,9 +2,12 @@ import type {
   BoxDimensions,
   BoxField,
   BoxParams,
+  CutoutAssignmentMode,
+  CutoutPairName,
   CutoutSet,
   FaceCutout,
   FaceName,
+  CutoutTarget,
   ValidationIssue,
 } from "@/lib/types";
 import { CutoutControls } from "@/components/CutoutControls";
@@ -18,16 +21,20 @@ type FieldConfig = {
 
 type BoxControlsProps = {
   activeFace: FaceName;
+  activePair: CutoutPairName;
+  cutoutAssignmentMode: CutoutAssignmentMode;
   cutouts: CutoutSet;
   dimensions: BoxDimensions;
   issues: ValidationIssue[];
   maxCornerChamfer: number;
   onActiveFaceChange: (face: FaceName) => void;
+  onActivePairChange: (pair: CutoutPairName) => void;
   onChange: (params: BoxParams) => void;
-  onClearCutout: (face: FaceName) => void;
-  onCutoutChange: (face: FaceName, cutout: FaceCutout) => void;
+  onClearCutout: (target: CutoutTarget) => void;
+  onCutoutAssignmentModeChange: (mode: CutoutAssignmentMode) => void;
+  onCutoutChange: (target: CutoutTarget, cutout: FaceCutout) => void;
   onReset: () => void;
-  onSvgUpload: (face: FaceName, file: File) => void;
+  onSvgUpload: (target: CutoutTarget, file: File) => void;
   params: BoxParams;
 };
 
@@ -42,13 +49,17 @@ const FIELDS: FieldConfig[] = [
 
 export function BoxControls({
   activeFace,
+  activePair,
+  cutoutAssignmentMode,
   cutouts,
   dimensions,
   issues,
   maxCornerChamfer,
   onActiveFaceChange,
+  onActivePairChange,
   onChange,
   onClearCutout,
+  onCutoutAssignmentModeChange,
   onCutoutChange,
   onReset,
   onSvgUpload,
@@ -135,8 +146,12 @@ export function BoxControls({
 
       <CutoutControls
         activeFace={activeFace}
+        activePair={activePair}
+        assignmentMode={cutoutAssignmentMode}
         cutouts={cutouts}
         onActiveFaceChange={onActiveFaceChange}
+        onActivePairChange={onActivePairChange}
+        onAssignmentModeChange={onCutoutAssignmentModeChange}
         onChange={onCutoutChange}
         onClear={onClearCutout}
         onSvgUpload={onSvgUpload}

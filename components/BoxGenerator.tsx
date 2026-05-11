@@ -5,6 +5,7 @@ import { BoxControls } from "@/components/BoxControls";
 import { BoxPreview } from "@/components/BoxPreview";
 import {
   createDefaultCutouts,
+  getCutoutTargetFaces,
   parseSvgCutout,
   validateCutouts,
 } from "@/lib/geometry/cutouts";
@@ -17,11 +18,21 @@ import {
   validateBoxParams,
 } from "@/lib/geometry/box";
 import { meshToAsciiStl } from "@/lib/geometry/stl";
-import type { BoxParams, FaceCutout, FaceName } from "@/lib/types";
+import type {
+  BoxParams,
+  CutoutAssignmentMode,
+  CutoutPairName,
+  CutoutTarget,
+  FaceCutout,
+  FaceName,
+} from "@/lib/types";
 
 export function BoxGenerator() {
   const [params, setParams] = useState<BoxParams>(DEFAULT_BOX_PARAMS);
+  const [cutoutAssignmentMode, setCutoutAssignmentMode] =
+    useState<CutoutAssignmentMode>("faces");
   const [activeFace, setActiveFace] = useState<FaceName>("front");
+  const [activePair, setActivePair] = useState<CutoutPairName>("frontBack");
   const [cutouts, setCutouts] = useState(createDefaultCutouts);
   const safeParams = useMemo(() => clampBoxParams(params), [params]);
   const issues = useMemo(
@@ -45,29 +56,41 @@ export function BoxGenerator() {
   );
   const canExport = issues.length === 0;
 
-  function updateCutout(face: FaceName, cutout: FaceCutout) {
+  function updateCutout(target: CutoutTarget, cutout: FaceCutout) {
+    const faces = getCutoutTargetFaces(target);
+
     setCutouts((current) => ({
       ...current,
-      [face]: cutout,
+      ...Object.fromEntries(faces.map((face) => [face, cutout])),
     }));
   }
 
-  function clearCutout(face: FaceName) {
-    setCutouts((current) => ({
-      ...current,
-      [face]: {
-        enabled: false,
-        margin: current[face].margin,
-        scale: current[face].scale,
-        shapes: [],
-      },
-    }));
+  function clearCutout(target: CutoutTarget) {
+    const faces = getCutoutTargetFaces(target);
+
+    setCutouts((current) => {
+      const next = { ...current };
+
+      for (const face of faces) {
+        next[face] = {
+          enabled: false,
+          margin: current[face].margin,
+          scale: current[face].scale,
+          shapes: [],
+        };
+      }
+
+      return next;
+    });
   }
 
-  async function uploadSvgCutout(face: FaceName, file: File) {
+  async function uploadSvgCutout(target: CutoutTarget, file: File) {
+    const faces = getCutoutTargetFaces(target);
+    const primaryFace = faces[0];
+
     if (file.type && file.type !== "image/svg+xml") {
-      updateCutout(face, {
-        ...cutouts[face],
+      updateCutout(target, {
+        ...cutouts[primaryFace],
         enabled: true,
         error: "Upload an SVG file for vector cutouts.",
         fileName: file.name,
@@ -80,16 +103,16 @@ export function BoxGenerator() {
       const svgText = await file.text();
       const shapes = parseSvgCutout(svgText);
 
-      updateCutout(face, {
-        ...cutouts[face],
+      updateCutout(target, {
+        ...cutouts[primaryFace],
         enabled: true,
         error: undefined,
         fileName: file.name,
         shapes,
       });
     } catch (error) {
-      updateCutout(face, {
-        ...cutouts[face],
+      updateCutout(target, {
+        ...cutouts[primaryFace],
         enabled: true,
         error:
           error instanceof Error
@@ -125,17 +148,21 @@ export function BoxGenerator() {
       <div className="mx-auto grid min-h-screen w-full max-w-7xl lg:grid-cols-[360px_minmax(0,1fr)]">
         <BoxControls
           activeFace={activeFace}
+          activePair={activePair}
+          cutoutAssignmentMode={cutoutAssignmentMode}
           cutouts={cutouts}
           dimensions={outerDimensions}
           issues={issues}
           maxCornerChamfer={maxCornerChamfer}
           onActiveFaceChange={setActiveFace}
+          onActivePairChange={setActivePair}
           onClearCutout={clearCutout}
           onChange={setParams}
+          onCutoutAssignmentModeChange={setCutoutAssignmentMode}
           onCutoutChange={updateCutout}
           onReset={() => setParams(DEFAULT_BOX_PARAMS)}
-          onSvgUpload={(face, file) => {
-            void uploadSvgCutout(face, file);
+          onSvgUpload={(target, file) => {
+            void uploadSvgCutout(target, file);
           }}
           params={params}
         />

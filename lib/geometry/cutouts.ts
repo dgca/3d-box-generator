@@ -7,6 +7,7 @@ import type {
   BoxParams,
   CutoutSet,
   CutoutShape,
+  CutoutTarget,
   FaceCutout,
   FaceName,
   ValidationIssue,
@@ -15,12 +16,26 @@ import type {
 import { getMaxCornerChamfer, getOuterDimensions } from "@/lib/geometry/box";
 
 export const FACE_NAMES: FaceName[] = ["front", "right", "back", "left"];
+export const CUTOUT_PAIR_NAMES = ["frontBack", "leftRight"] as const;
 
 export const FACE_LABELS: Record<FaceName, string> = {
   front: "Front",
   right: "Right",
   back: "Back",
   left: "Left",
+};
+
+export const CUTOUT_PAIR_LABELS: Record<(typeof CUTOUT_PAIR_NAMES)[number], string> = {
+  frontBack: "Front / Back",
+  leftRight: "Left / Right",
+};
+
+export const CUTOUT_PAIR_FACES: Record<
+  (typeof CUTOUT_PAIR_NAMES)[number],
+  [FaceName, FaceName]
+> = {
+  frontBack: ["front", "back"],
+  leftRight: ["left", "right"],
 };
 
 const DEFAULT_CUTOUT: FaceCutout = {
@@ -35,6 +50,22 @@ export function createDefaultCutouts(): CutoutSet {
     cutouts[face] = { ...DEFAULT_CUTOUT };
     return cutouts;
   }, {} as CutoutSet);
+}
+
+export function getCutoutTargetFaces(target: CutoutTarget): FaceName[] {
+  if (target === "frontBack" || target === "leftRight") {
+    return CUTOUT_PAIR_FACES[target];
+  }
+
+  return [target];
+}
+
+export function getCutoutTargetLabel(target: CutoutTarget): string {
+  if (target === "frontBack" || target === "leftRight") {
+    return CUTOUT_PAIR_LABELS[target];
+  }
+
+  return FACE_LABELS[target];
 }
 
 export function parseSvgCutout(svgText: string): CutoutShape[] {

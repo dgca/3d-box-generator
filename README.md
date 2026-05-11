@@ -37,6 +37,7 @@ pnpm lint
 - Interior dimensions are entered in millimeters
 - Corner control is a chamfer, not a true rounded fillet
 - SVG cutouts on front, right, back, and left walls
+- Cutouts can be edited per face or applied to opposite face pairs
 - Cutouts stay inside the flat wall area and away from chamfered corners
 - STL export is ASCII for readability
 

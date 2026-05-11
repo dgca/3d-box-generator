@@ -9,6 +9,9 @@ export type BoxParams = {
 
 export type BoxField = keyof BoxParams;
 export type FaceName = "front" | "right" | "back" | "left";
+export type CutoutAssignmentMode = "faces" | "pairs";
+export type CutoutPairName = "frontBack" | "leftRight";
+export type CutoutTarget = FaceName | CutoutPairName;
 
 export type BoxDimensions = {
   outerWidth: number;
