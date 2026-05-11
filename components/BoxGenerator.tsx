@@ -1,0 +1,110 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BoxControls } from "@/components/BoxControls";
+import { BoxPreview } from "@/components/BoxPreview";
+import {
+  DEFAULT_BOX_PARAMS,
+  clampBoxParams,
+  generateOpenBoxGeometry,
+  getMaxCornerChamfer,
+  getOuterDimensions,
+  validateBoxParams,
+} from "@/lib/geometry/box";
+import { meshToAsciiStl } from "@/lib/geometry/stl";
+import type { BoxParams } from "@/lib/types";
+
+export function BoxGenerator() {
+  const [params, setParams] = useState<BoxParams>(DEFAULT_BOX_PARAMS);
+  const safeParams = useMemo(() => clampBoxParams(params), [params]);
+  const issues = useMemo(() => validateBoxParams(params), [params]);
+  const meshData = useMemo(
+    () => generateOpenBoxGeometry(safeParams),
+    [safeParams],
+  );
+  const outerDimensions = useMemo(
+    () => getOuterDimensions(safeParams),
+    [safeParams],
+  );
+  const maxCornerChamfer = useMemo(
+    () => getMaxCornerChamfer(safeParams),
+    [safeParams],
+  );
+  const canExport = issues.length === 0;
+
+  function downloadStl() {
+    if (!canExport) {
+      return;
+    }
+
+    const mesh = generateOpenBoxGeometry(params);
+    const stl = meshToAsciiStl(mesh, "tarot_box");
+    const blob = new Blob([stl], { type: "model/stl;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = getFileName(params);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#f7f7fb] text-zinc-950">
+      <div className="mx-auto grid min-h-screen w-full max-w-7xl lg:grid-cols-[360px_minmax(0,1fr)]">
+        <BoxControls
+          dimensions={outerDimensions}
+          issues={issues}
+          maxCornerChamfer={maxCornerChamfer}
+          onChange={setParams}
+          onReset={() => setParams(DEFAULT_BOX_PARAMS)}
+          params={params}
+        />
+
+        <section className="flex min-h-[620px] min-w-0 flex-col">
+          <div className="flex flex-col gap-4 border-b border-zinc-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                Live mesh preview
+              </p>
+              <h2 className="mt-1 text-xl font-semibold tracking-normal text-zinc-950">
+                Open-top box
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-zinc-600">
+                {meshData.triangles.length} triangles
+              </p>
+              <button
+                className="h-11 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
+                disabled={!canExport}
+                onClick={downloadStl}
+                type="button"
+              >
+                Download STL
+              </button>
+            </div>
+          </div>
+
+          {issues.length > 0 ? (
+            <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 lg:px-6">
+              Fix the highlighted values before exporting.
+            </div>
+          ) : null}
+
+          <BoxPreview meshData={meshData} />
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function getFileName(params: BoxParams) {
+  const width = Math.round(params.interiorWidth);
+  const depth = Math.round(params.interiorDepth);
+  const height = Math.round(params.interiorHeight);
+
+  return `tarot-box-${width}x${depth}x${height}mm.stl`;
+}

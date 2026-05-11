@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 3D Printable Parametric Box Generator
 
-## Getting Started
+An MVP web app for generating simple open-top rectangular boxes for 3D printing. The first target use case is a tarot card box with configurable interior dimensions, wall thickness, floor thickness, and vertical corner chamfer.
 
-First, run the development server:
+The app renders a browser preview with Three.js and exports an ASCII STL mesh in millimeters.
+
+## Commands
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a production build:
 
-## Learn More
+```bash
+pnpm build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Run linting:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm lint
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Current Scope
 
-## Deploy on Vercel
+- Open-top box body only
+- Manual mesh generation for predictable STL output
+- Interior dimensions are entered in millimeters
+- Corner control is a chamfer, not a true rounded fillet
+- STL export is ASCII for readability
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Limitations
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- No lid generation yet
+- No SVG cutout support yet
+- No boolean operations or arbitrary CAD features
+- No slicer-specific printability analysis
+- Chamfered corners use the same chamfer value on the inner and outer loops, so corner wall thickness is intentionally simple rather than CAD-offset exact
+
+## Next Steps
+
+- Add a lid option with configurable clearance
+- Add printability warnings for thin walls and oversized spans
+- Add a constrained SVG silhouette cutout on the front face
+- Add separate STL exports for body and lid
+- Consider binary STL or 3MF export once the geometry grows
