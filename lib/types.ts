@@ -8,6 +8,7 @@ export type BoxParams = {
 };
 
 export type BoxField = keyof BoxParams;
+export type FaceName = "front" | "right" | "back" | "left";
 
 export type BoxDimensions = {
   outerWidth: number;
@@ -15,8 +16,24 @@ export type BoxDimensions = {
   outerHeight: number;
 };
 
+export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export type Triangle = [Vec3, Vec3, Vec3];
+
+export type CutoutShape = {
+  contour: Vec2[];
+};
+
+export type FaceCutout = {
+  enabled: boolean;
+  error?: string;
+  fileName?: string;
+  margin: number;
+  scale: number;
+  shapes: CutoutShape[];
+};
+
+export type CutoutSet = Record<FaceName, FaceCutout>;
 
 export type MeshData = {
   triangles: Triangle[];
@@ -24,6 +41,7 @@ export type MeshData = {
 };
 
 export type ValidationIssue = {
+  face?: FaceName;
   field?: BoxField;
   message: string;
 };

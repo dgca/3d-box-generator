@@ -43,8 +43,7 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
     container.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.35;
+    controls.autoRotate = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxPolarAngle = Math.PI * 0.48;

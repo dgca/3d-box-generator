@@ -2,7 +2,7 @@
 
 An MVP web app for generating simple open-top rectangular boxes for 3D printing. The first target use case is a tarot card box with configurable interior dimensions, wall thickness, floor thickness, and vertical corner chamfer.
 
-The app renders a browser preview with Three.js and exports an ASCII STL mesh in millimeters.
+The app renders a browser preview with Three.js and exports an ASCII STL mesh in millimeters. Simple SVG silhouettes can be assigned to the four vertical walls and are generated as real through-cutouts in the exported mesh.
 
 ## Commands
 
@@ -36,12 +36,16 @@ pnpm lint
 - Manual mesh generation for predictable STL output
 - Interior dimensions are entered in millimeters
 - Corner control is a chamfer, not a true rounded fillet
+- SVG cutouts on front, right, back, and left walls
+- Cutouts stay inside the flat wall area and away from chamfered corners
 - STL export is ASCII for readability
 
 ## Limitations
 
 - No lid generation yet
-- No SVG cutout support yet
+- SVG cutouts support simple dark filled silhouettes only
+- Compound SVG paths with internal islands are rejected for now
+- Raster images are not traced yet; convert PNG/JPG artwork to SVG first
 - No boolean operations or arbitrary CAD features
 - No slicer-specific printability analysis
 - Chamfered corners use the same chamfer value on the inner and outer loops, so corner wall thickness is intentionally simple rather than CAD-offset exact
@@ -50,6 +54,7 @@ pnpm lint
 
 - Add a lid option with configurable clearance
 - Add printability warnings for thin walls and oversized spans
-- Add a constrained SVG silhouette cutout on the front face
+- Support compound SVG paths with preserved interior islands
+- Add optional raster-to-vector tracing for PNG/JPG artwork
 - Add separate STL exports for body and lid
 - Consider binary STL or 3MF export once the geometry grows

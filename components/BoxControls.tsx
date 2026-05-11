@@ -2,8 +2,12 @@ import type {
   BoxDimensions,
   BoxField,
   BoxParams,
+  CutoutSet,
+  FaceCutout,
+  FaceName,
   ValidationIssue,
 } from "@/lib/types";
+import { CutoutControls } from "@/components/CutoutControls";
 
 type FieldConfig = {
   key: BoxField;
@@ -13,11 +17,17 @@ type FieldConfig = {
 };
 
 type BoxControlsProps = {
+  activeFace: FaceName;
+  cutouts: CutoutSet;
   dimensions: BoxDimensions;
   issues: ValidationIssue[];
   maxCornerChamfer: number;
+  onActiveFaceChange: (face: FaceName) => void;
   onChange: (params: BoxParams) => void;
+  onClearCutout: (face: FaceName) => void;
+  onCutoutChange: (face: FaceName, cutout: FaceCutout) => void;
   onReset: () => void;
+  onSvgUpload: (face: FaceName, file: File) => void;
   params: BoxParams;
 };
 
@@ -31,11 +41,17 @@ const FIELDS: FieldConfig[] = [
 ];
 
 export function BoxControls({
+  activeFace,
+  cutouts,
   dimensions,
   issues,
   maxCornerChamfer,
+  onActiveFaceChange,
   onChange,
+  onClearCutout,
+  onCutoutChange,
   onReset,
+  onSvgUpload,
   params,
 }: BoxControlsProps) {
   const issuesByField = new Map<BoxField, string>();
@@ -105,7 +121,10 @@ export function BoxControls({
                 value={Number.isFinite(value) ? value : ""}
               />
               {issue ? (
-                <span className="text-xs leading-5 text-rose-600" id={`${inputId}-error`}>
+                <span
+                  className="text-xs leading-5 text-rose-600"
+                  id={`${inputId}-error`}
+                >
                   {issue}
                 </span>
               ) : null}
@@ -113,6 +132,15 @@ export function BoxControls({
           );
         })}
       </div>
+
+      <CutoutControls
+        activeFace={activeFace}
+        cutouts={cutouts}
+        onActiveFaceChange={onActiveFaceChange}
+        onChange={onCutoutChange}
+        onClear={onClearCutout}
+        onSvgUpload={onSvgUpload}
+      />
 
       <div className="mt-auto grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">

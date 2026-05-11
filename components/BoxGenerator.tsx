@@ -4,6 +4,11 @@ import { useMemo, useState } from "react";
 import { BoxControls } from "@/components/BoxControls";
 import { BoxPreview } from "@/components/BoxPreview";
 import {
+  createDefaultCutouts,
+  parseSvgCutout,
+  validateCutouts,
+} from "@/lib/geometry/cutouts";
+import {
   DEFAULT_BOX_PARAMS,
   clampBoxParams,
   generateOpenBoxGeometry,
@@ -12,15 +17,23 @@ import {
   validateBoxParams,
 } from "@/lib/geometry/box";
 import { meshToAsciiStl } from "@/lib/geometry/stl";
-import type { BoxParams } from "@/lib/types";
+import type { BoxParams, FaceCutout, FaceName } from "@/lib/types";
 
 export function BoxGenerator() {
   const [params, setParams] = useState<BoxParams>(DEFAULT_BOX_PARAMS);
+  const [activeFace, setActiveFace] = useState<FaceName>("front");
+  const [cutouts, setCutouts] = useState(createDefaultCutouts);
   const safeParams = useMemo(() => clampBoxParams(params), [params]);
-  const issues = useMemo(() => validateBoxParams(params), [params]);
+  const issues = useMemo(
+    () => [
+      ...validateBoxParams(params),
+      ...validateCutouts(safeParams, cutouts),
+    ],
+    [cutouts, params, safeParams],
+  );
   const meshData = useMemo(
-    () => generateOpenBoxGeometry(safeParams),
-    [safeParams],
+    () => generateOpenBoxGeometry(safeParams, cutouts),
+    [cutouts, safeParams],
   );
   const outerDimensions = useMemo(
     () => getOuterDimensions(safeParams),
@@ -32,12 +45,68 @@ export function BoxGenerator() {
   );
   const canExport = issues.length === 0;
 
+  function updateCutout(face: FaceName, cutout: FaceCutout) {
+    setCutouts((current) => ({
+      ...current,
+      [face]: cutout,
+    }));
+  }
+
+  function clearCutout(face: FaceName) {
+    setCutouts((current) => ({
+      ...current,
+      [face]: {
+        enabled: false,
+        margin: current[face].margin,
+        scale: current[face].scale,
+        shapes: [],
+      },
+    }));
+  }
+
+  async function uploadSvgCutout(face: FaceName, file: File) {
+    if (file.type && file.type !== "image/svg+xml") {
+      updateCutout(face, {
+        ...cutouts[face],
+        enabled: true,
+        error: "Upload an SVG file for vector cutouts.",
+        fileName: file.name,
+        shapes: [],
+      });
+      return;
+    }
+
+    try {
+      const svgText = await file.text();
+      const shapes = parseSvgCutout(svgText);
+
+      updateCutout(face, {
+        ...cutouts[face],
+        enabled: true,
+        error: undefined,
+        fileName: file.name,
+        shapes,
+      });
+    } catch (error) {
+      updateCutout(face, {
+        ...cutouts[face],
+        enabled: true,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not read this SVG cutout.",
+        fileName: file.name,
+        shapes: [],
+      });
+    }
+  }
+
   function downloadStl() {
     if (!canExport) {
       return;
     }
 
-    const mesh = generateOpenBoxGeometry(params);
+    const mesh = generateOpenBoxGeometry(params, cutouts);
     const stl = meshToAsciiStl(mesh, "tarot_box");
     const blob = new Blob([stl], { type: "model/stl;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -55,11 +124,19 @@ export function BoxGenerator() {
     <main className="min-h-screen bg-[#f7f7fb] text-zinc-950">
       <div className="mx-auto grid min-h-screen w-full max-w-7xl lg:grid-cols-[360px_minmax(0,1fr)]">
         <BoxControls
+          activeFace={activeFace}
+          cutouts={cutouts}
           dimensions={outerDimensions}
           issues={issues}
           maxCornerChamfer={maxCornerChamfer}
+          onActiveFaceChange={setActiveFace}
+          onClearCutout={clearCutout}
           onChange={setParams}
+          onCutoutChange={updateCutout}
           onReset={() => setParams(DEFAULT_BOX_PARAMS)}
+          onSvgUpload={(face, file) => {
+            void uploadSvgCutout(face, file);
+          }}
           params={params}
         />
 
@@ -90,7 +167,7 @@ export function BoxGenerator() {
 
           {issues.length > 0 ? (
             <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 lg:px-6">
-              Fix the highlighted values before exporting.
+              Fix the highlighted values or cutout settings before exporting.
             </div>
           ) : null}
 
