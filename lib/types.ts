@@ -10,6 +10,7 @@ export type BoxParams = {
 export type BoxField = keyof BoxParams;
 export type FaceName = "front" | "right" | "back" | "left";
 export type CutoutAssignmentMode = "faces" | "pairs";
+export type CutoutFitMode = "contain" | "stretch";
 export type CutoutPairName = "frontBack" | "leftRight";
 export type CutoutTarget = FaceName | CutoutPairName;
 
@@ -31,6 +32,7 @@ export type FaceCutout = {
   enabled: boolean;
   error?: string;
   fileName?: string;
+  fitMode: CutoutFitMode;
   margin: number;
   scale: number;
   shapes: CutoutShape[];

@@ -3,11 +3,13 @@ import {
   CUTOUT_PAIR_NAMES,
   FACE_LABELS,
   FACE_NAMES,
+  getCutoutDesignMetrics,
   getCutoutPointCount,
   getCutoutTargetFaces,
   getCutoutTargetLabel,
 } from "@/lib/geometry/cutouts";
 import type {
+  BoxParams,
   CutoutAssignmentMode,
   CutoutPairName,
   CutoutSet,
@@ -27,6 +29,7 @@ type CutoutControlsProps = {
   onChange: (target: CutoutTarget, cutout: FaceCutout) => void;
   onClear: (target: CutoutTarget) => void;
   onSvgUpload: (target: CutoutTarget, file: File) => void;
+  params: BoxParams;
 };
 
 export function CutoutControls({
@@ -40,10 +43,14 @@ export function CutoutControls({
   onChange,
   onClear,
   onSvgUpload,
+  params,
 }: CutoutControlsProps) {
   const activeTarget = assignmentMode === "faces" ? activeFace : activePair;
   const targetFaces = getCutoutTargetFaces(activeTarget);
-  const cutout = cutouts[targetFaces[0]];
+  const primaryFace = targetFaces[0];
+  const cutout = cutouts[primaryFace];
+  const fitMode = cutout.fitMode ?? "contain";
+  const designMetrics = getCutoutDesignMetrics(params, primaryFace, cutout);
   const isMixedPair =
     targetFaces.length > 1 &&
     targetFaces.some(
@@ -146,6 +153,34 @@ export function CutoutControls({
           </p>
         ) : null}
 
+        <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Artwork sizing
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <SizingMetric
+              label="Usable area"
+              value={`${formatMm(designMetrics.usableWidth)} x ${formatMm(
+                designMetrics.usableHeight,
+              )} mm`}
+            />
+            <SizingMetric
+              label="Placed artwork"
+              value={
+                designMetrics.placedWidth === null ||
+                designMetrics.placedHeight === null
+                  ? "No SVG"
+                  : `${formatMm(designMetrics.placedWidth)} x ${formatMm(
+                      designMetrics.placedHeight,
+                    )} mm`
+              }
+            />
+          </div>
+          <p className="text-xs leading-5 text-zinc-500">
+            Margin and chamfer excluded.
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <label
             className="inline-flex h-10 cursor-pointer items-center rounded-md bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-teal-700"
@@ -210,6 +245,32 @@ export function CutoutControls({
           </span>
         </label>
 
+        <div className="grid gap-2 text-sm font-medium text-zinc-800">
+          Fit
+          <div className="grid grid-cols-2 gap-1 rounded-md bg-zinc-100 p-1">
+            <FitModeButton
+              isActive={fitMode === "contain"}
+              label="Keep proportions"
+              onClick={() =>
+                onChange(activeTarget, {
+                  ...cutout,
+                  fitMode: "contain",
+                })
+              }
+            />
+            <FitModeButton
+              isActive={fitMode === "stretch"}
+              label="Stretch to area"
+              onClick={() =>
+                onChange(activeTarget, {
+                  ...cutout,
+                  fitMode: "stretch",
+                })
+              }
+            />
+          </div>
+        </div>
+
         <label className="grid gap-2 text-sm font-medium text-zinc-800">
           Scale
           <span className="flex items-center gap-3">
@@ -233,6 +294,40 @@ export function CutoutControls({
           </span>
         </label>
       </div>
+    </div>
+  );
+}
+
+function FitModeButton({
+  isActive,
+  label,
+  onClick,
+}: {
+  isActive: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={isActive}
+      className={`min-h-9 rounded px-2 py-2 text-xs font-semibold transition ${
+        isActive
+          ? "bg-white text-zinc-950 shadow-sm"
+          : "text-zinc-600 hover:text-zinc-950"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
+  );
+}
+
+function SizingMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="text-sm font-semibold text-zinc-950">{value}</p>
     </div>
   );
 }
@@ -266,9 +361,14 @@ function getCutoutSignature(cutout: FaceCutout) {
     enabled: cutout.enabled,
     error: cutout.error ?? "",
     fileName: cutout.fileName ?? "",
+    fitMode: cutout.fitMode ?? "contain",
     margin: cutout.margin,
     points: getCutoutPointCount(cutout),
     scale: cutout.scale,
     shapes: cutout.shapes.length,
   });
+}
+
+function formatMm(value: number) {
+  return Number.isInteger(value) ? value : value.toFixed(1);
 }

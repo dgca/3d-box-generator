@@ -58,10 +58,11 @@ export function BoxGenerator() {
 
   function updateCutout(target: CutoutTarget, cutout: FaceCutout) {
     const faces = getCutoutTargetFaces(target);
+    const normalizedCutout = withCutoutDefaults(cutout);
 
     setCutouts((current) => ({
       ...current,
-      ...Object.fromEntries(faces.map((face) => [face, cutout])),
+      ...Object.fromEntries(faces.map((face) => [face, normalizedCutout])),
     }));
   }
 
@@ -74,6 +75,7 @@ export function BoxGenerator() {
       for (const face of faces) {
         next[face] = {
           enabled: false,
+          fitMode: current[face].fitMode ?? "contain",
           margin: current[face].margin,
           scale: current[face].scale,
           shapes: [],
@@ -130,7 +132,7 @@ export function BoxGenerator() {
     }
 
     const mesh = generateOpenBoxGeometry(params, cutouts);
-    const stl = meshToAsciiStl(mesh, "tarot_box");
+    const stl = meshToAsciiStl(mesh, "box");
     const blob = new Blob([stl], { type: "model/stl;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -144,56 +146,56 @@ export function BoxGenerator() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f7fb] text-zinc-950">
-      <div className="mx-auto grid min-h-screen w-full max-w-7xl lg:grid-cols-[360px_minmax(0,1fr)]">
-        <BoxControls
-          activeFace={activeFace}
-          activePair={activePair}
-          cutoutAssignmentMode={cutoutAssignmentMode}
-          cutouts={cutouts}
-          dimensions={outerDimensions}
-          issues={issues}
-          maxCornerChamfer={maxCornerChamfer}
-          onActiveFaceChange={setActiveFace}
-          onActivePairChange={setActivePair}
-          onClearCutout={clearCutout}
-          onChange={setParams}
-          onCutoutAssignmentModeChange={setCutoutAssignmentMode}
-          onCutoutChange={updateCutout}
-          onReset={() => setParams(DEFAULT_BOX_PARAMS)}
-          onSvgUpload={(target, file) => {
-            void uploadSvgCutout(target, file);
-          }}
-          params={params}
-        />
+    <main className="flex h-screen flex-col overflow-hidden bg-[#f7f7fb] text-zinc-950">
+      <header className="sticky top-0 z-20 flex min-h-20 shrink-0 flex-col gap-4 border-b border-zinc-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-normal text-zinc-950">
+            3D Box Generator
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-zinc-600">
+            {meshData.triangles.length} triangles
+          </p>
+          <button
+            className="h-11 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
+            disabled={!canExport}
+            onClick={downloadStl}
+            type="button"
+          >
+            Download STL
+          </button>
+        </div>
+      </header>
 
-        <section className="flex min-h-[620px] min-w-0 flex-col">
-          <div className="flex flex-col gap-4 border-b border-zinc-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                Live mesh preview
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-normal text-zinc-950">
-                Open-top box
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-sm text-zinc-600">
-                {meshData.triangles.length} triangles
-              </p>
-              <button
-                className="h-11 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
-                disabled={!canExport}
-                onClick={downloadStl}
-                type="button"
-              >
-                Download STL
-              </button>
-            </div>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <aside className="max-h-[48vh] w-full shrink-0 overflow-y-auto border-b border-zinc-200 bg-white lg:h-full lg:max-h-none lg:w-[360px] lg:border-r lg:border-b-0">
+          <BoxControls
+            activeFace={activeFace}
+            activePair={activePair}
+            cutoutAssignmentMode={cutoutAssignmentMode}
+            cutouts={cutouts}
+            dimensions={outerDimensions}
+            issues={issues}
+            maxCornerChamfer={maxCornerChamfer}
+            onActiveFaceChange={setActiveFace}
+            onActivePairChange={setActivePair}
+            onClearCutout={clearCutout}
+            onChange={setParams}
+            onCutoutAssignmentModeChange={setCutoutAssignmentMode}
+            onCutoutChange={updateCutout}
+            onReset={() => setParams(DEFAULT_BOX_PARAMS)}
+            onSvgUpload={(target, file) => {
+              void uploadSvgCutout(target, file);
+            }}
+            params={params}
+            safeParams={safeParams}
+          />
+        </aside>
 
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {issues.length > 0 ? (
-            <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 lg:px-6">
+            <div className="shrink-0 border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 lg:px-6">
               Fix the highlighted values or cutout settings before exporting.
             </div>
           ) : null}
@@ -210,5 +212,12 @@ function getFileName(params: BoxParams) {
   const depth = Math.round(params.interiorDepth);
   const height = Math.round(params.interiorHeight);
 
-  return `tarot-box-${width}x${depth}x${height}mm.stl`;
+  return `box-${width}x${depth}x${height}mm.stl`;
+}
+
+function withCutoutDefaults(cutout: FaceCutout): FaceCutout {
+  return {
+    ...cutout,
+    fitMode: cutout.fitMode ?? "contain",
+  };
 }

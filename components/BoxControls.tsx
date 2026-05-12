@@ -36,6 +36,7 @@ type BoxControlsProps = {
   onReset: () => void;
   onSvgUpload: (target: CutoutTarget, file: File) => void;
   params: BoxParams;
+  safeParams: BoxParams;
 };
 
 const FIELDS: FieldConfig[] = [
@@ -64,6 +65,7 @@ export function BoxControls({
   onReset,
   onSvgUpload,
   params,
+  safeParams,
 }: BoxControlsProps) {
   const issuesByField = new Map<BoxField, string>();
 
@@ -74,12 +76,12 @@ export function BoxControls({
   }
 
   return (
-    <section className="flex h-full w-full min-w-0 flex-col gap-6 border-b border-zinc-200 bg-white px-5 py-6 shadow-sm lg:border-r lg:border-b-0 lg:px-6">
+    <section className="flex min-h-full w-full min-w-0 flex-col gap-6 bg-white px-5 py-6 lg:px-6">
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-            Printable body
-          </p>
+          <h2 className="text-lg font-semibold tracking-normal text-zinc-950">
+            Box settings
+          </h2>
           <button
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-500 hover:text-zinc-950"
             type="button"
@@ -88,11 +90,8 @@ export function BoxControls({
             Reset
           </button>
         </div>
-        <h1 className="text-2xl font-semibold tracking-normal text-zinc-950">
-          Parametric Box Generator
-        </h1>
         <p className="text-sm leading-6 text-zinc-600">
-          Configure an open-top tarot card box in millimeters.
+          Set dimensions, wall structure, and cutout artwork in millimeters.
         </p>
       </div>
 
@@ -155,6 +154,7 @@ export function BoxControls({
         onChange={onCutoutChange}
         onClear={onClearCutout}
         onSvgUpload={onSvgUpload}
+        params={safeParams}
       />
 
       <div className="mt-auto grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-4">

@@ -1,6 +1,6 @@
-# 3D Printable Parametric Box Generator
+# 3D Box Generator
 
-An MVP web app for generating simple open-top rectangular boxes for 3D printing. The first target use case is a tarot card box with configurable interior dimensions, wall thickness, floor thickness, and vertical corner chamfer.
+An MVP web app for generating simple open-top rectangular boxes for 3D printing with configurable interior dimensions, wall thickness, floor thickness, and vertical corner chamfer.
 
 The app renders a browser preview with Three.js and exports an ASCII STL mesh in millimeters. Simple SVG silhouettes can be assigned to the four vertical walls and are generated as real through-cutouts in the exported mesh.
 
@@ -38,6 +38,8 @@ pnpm lint
 - Corner control is a chamfer, not a true rounded fillet
 - SVG cutouts on front, right, back, and left walls
 - Cutouts can be edited per face or applied to opposite face pairs
+- Cutout controls show usable artwork dimensions for the selected wall
+- SVG artwork can preserve proportions or stretch to the usable wall area
 - Cutouts stay inside the flat wall area and away from chamfered corners
 - STL export is ASCII for readability
 

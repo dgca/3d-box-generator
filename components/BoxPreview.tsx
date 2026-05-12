@@ -18,6 +18,7 @@ type PreviewScene = {
 
 export function BoxPreview({ meshData }: BoxPreviewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasFramedCameraRef = useRef(false);
   const sceneRef = useRef<PreviewScene | null>(null);
 
   useEffect(() => {
@@ -120,6 +121,7 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
       floor.geometry.dispose();
       renderer.dispose();
       renderer.domElement.remove();
+      hasFramedCameraRef.current = false;
       sceneRef.current = null;
     };
   }, []);
@@ -134,13 +136,19 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
     const geometry = meshDataToBufferGeometry(meshData);
     preview.mesh.geometry.dispose();
     preview.mesh.geometry = geometry;
-    fitCamera(preview.camera, preview.controls, meshData);
+
+    if (hasFramedCameraRef.current) {
+      updateCameraBounds(preview.camera, preview.controls, meshData);
+    } else {
+      fitCamera(preview.camera, preview.controls, meshData);
+      hasFramedCameraRef.current = true;
+    }
   }, [meshData]);
 
   return (
     <div
       aria-label="3D box preview"
-      className="min-h-[420px] min-w-0 flex-1 overflow-hidden bg-[#f7f7fb] lg:min-h-0"
+      className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#f7f7fb]"
       ref={containerRef}
     />
   );
@@ -172,10 +180,7 @@ function fitCamera(
   controls: OrbitControls,
   meshData: MeshData,
 ) {
-  const { outerDepth, outerHeight, outerWidth } = meshData.dimensions;
-  const maxDimension = Math.max(outerWidth, outerDepth, outerHeight);
-  const distance = Math.max(120, maxDimension * 1.85);
-  const targetZ = outerHeight * 0.45;
+  const { distance, targetZ } = getCameraFrame(meshData);
 
   controls.target.set(0, 0, targetZ);
   camera.near = Math.max(0.1, distance / 1000);
@@ -183,4 +188,32 @@ function fitCamera(
   camera.position.set(distance * 0.8, -distance * 1.05, distance * 0.72);
   camera.updateProjectionMatrix();
   controls.update();
+}
+
+function updateCameraBounds(
+  camera: THREE.PerspectiveCamera,
+  controls: OrbitControls,
+  meshData: MeshData,
+) {
+  const { distance, targetZ } = getCameraFrame(meshData);
+  const previousTarget = controls.target.clone();
+  const nextTarget = new THREE.Vector3(0, 0, targetZ);
+  const cameraOffset = camera.position.clone().sub(previousTarget);
+
+  controls.target.copy(nextTarget);
+  camera.position.copy(nextTarget.add(cameraOffset));
+  camera.near = Math.max(0.1, distance / 1000);
+  camera.far = Math.max(distance * 8, cameraOffset.length() * 4);
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
+function getCameraFrame(meshData: MeshData) {
+  const { outerDepth, outerHeight, outerWidth } = meshData.dimensions;
+  const maxDimension = Math.max(outerWidth, outerDepth, outerHeight);
+
+  return {
+    distance: Math.max(120, maxDimension * 1.85),
+    targetZ: outerHeight * 0.45,
+  };
 }

@@ -13,7 +13,11 @@ import type {
   ValidationIssue,
   Vec2,
 } from "@/lib/types";
-import { getMaxCornerChamfer, getOuterDimensions } from "@/lib/geometry/box";
+import {
+  getCutoutShapeBounds,
+  getMaxCornerChamfer,
+  getOuterDimensions,
+} from "@/lib/geometry/box";
 
 export const FACE_NAMES: FaceName[] = ["front", "right", "back", "left"];
 export const CUTOUT_PAIR_NAMES = ["frontBack", "leftRight"] as const;
@@ -40,10 +44,13 @@ export const CUTOUT_PAIR_FACES: Record<
 
 const DEFAULT_CUTOUT: FaceCutout = {
   enabled: false,
+  fitMode: "contain",
   margin: 6,
   scale: 0.82,
   shapes: [],
 };
+
+const MIN_CUTOUT_SCALE = 0.05;
 
 export function createDefaultCutouts(): CutoutSet {
   return FACE_NAMES.reduce((cutouts, face) => {
@@ -148,6 +155,76 @@ export function validateCutouts(
   return issues;
 }
 
+export function getCutoutDesignMetrics(
+  params: BoxParams,
+  face: FaceName,
+  cutout: FaceCutout,
+) {
+  const dimensions = getOuterDimensions(params);
+  const chamfer = Math.min(params.cornerRadius, getMaxCornerChamfer(params));
+  const flatWidth =
+    face === "front" || face === "back"
+      ? params.interiorWidth - chamfer * 2
+      : params.interiorDepth - chamfer * 2;
+  const margin = Math.max(0, finiteOr(cutout.margin, 0));
+  const usableWidth = Math.max(0, flatWidth - margin * 2);
+  const usableHeight = Math.max(
+    0,
+    dimensions.outerHeight - params.floorThickness - margin * 2,
+  );
+  const bounds = getCutoutShapeBounds(cutout.shapes);
+
+  if (!bounds || usableWidth === 0 || usableHeight === 0) {
+    return {
+      face,
+      placedHeight: null,
+      placedWidth: null,
+      sourceHeight: null,
+      sourceWidth: null,
+      usableHeight,
+      usableWidth,
+    };
+  }
+
+  const sourceWidth = Math.max(0, bounds.maxX - bounds.minX);
+  const sourceHeight = Math.max(0, bounds.maxY - bounds.minY);
+
+  if (sourceWidth === 0 || sourceHeight === 0) {
+    return {
+      face,
+      placedHeight: null,
+      placedWidth: null,
+      sourceHeight,
+      sourceWidth,
+      usableHeight,
+      usableWidth,
+    };
+  }
+
+  const artScale = getCutoutArtScale(cutout);
+  const containScale =
+    Math.min(usableWidth / sourceWidth, usableHeight / sourceHeight) * artScale;
+  const shouldStretch = (cutout.fitMode ?? "contain") === "stretch";
+  const scaleX =
+    shouldStretch
+      ? (usableWidth / sourceWidth) * artScale
+      : containScale;
+  const scaleY =
+    shouldStretch
+      ? (usableHeight / sourceHeight) * artScale
+      : containScale;
+
+  return {
+    face,
+    placedHeight: sourceHeight * scaleY,
+    placedWidth: sourceWidth * scaleX,
+    sourceHeight,
+    sourceWidth,
+    usableHeight,
+    usableWidth,
+  };
+}
+
 export function getCutoutPointCount(cutout: FaceCutout): number {
   return cutout.shapes.reduce(
     (count, shape) => count + shape.contour.length,
@@ -195,6 +272,14 @@ function getPathColor(color: Color | undefined, fill: string | undefined) {
   }
 
   return new Color("black");
+}
+
+function finiteOr(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getCutoutArtScale(cutout: FaceCutout) {
+  return Math.min(1, Math.max(MIN_CUTOUT_SCALE, finiteOr(cutout.scale, 1)));
 }
 
 function cleanLoop(points: Vec2[]): Vec2[] {

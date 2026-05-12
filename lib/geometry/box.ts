@@ -469,7 +469,7 @@ function fitCutoutLoops(
   flatWidth: number,
   cutout: FaceCutout,
 ): Vec2[][] {
-  const bounds = getCutoutBounds(cutout.shapes);
+  const bounds = getCutoutShapeBounds(cutout.shapes);
 
   if (!bounds) {
     return [];
@@ -485,9 +485,18 @@ function fitCutoutLoops(
 
   const sourceWidth = Math.max(EPSILON, bounds.maxX - bounds.minX);
   const sourceHeight = Math.max(EPSILON, bounds.maxY - bounds.minY);
-  const fitScale =
-    Math.min(safeWidth / sourceWidth, safeHeight / sourceHeight) *
-    Math.min(1, Math.max(0.05, finiteOr(cutout.scale, 1)));
+  const artScale = Math.min(1, Math.max(0.05, finiteOr(cutout.scale, 1)));
+  const containScale =
+    Math.min(safeWidth / sourceWidth, safeHeight / sourceHeight) * artScale;
+  const shouldStretch = (cutout.fitMode ?? "contain") === "stretch";
+  const fitScaleX =
+    shouldStretch
+      ? (safeWidth / sourceWidth) * artScale
+      : containScale;
+  const fitScaleY =
+    shouldStretch
+      ? (safeHeight / sourceHeight) * artScale
+      : containScale;
   const sourceCenterX = (bounds.minX + bounds.maxX) / 2;
   const sourceCenterY = (bounds.minY + bounds.maxY) / 2;
   const targetCenterZ =
@@ -497,8 +506,8 @@ function fitCutoutLoops(
     .map((shape) =>
       ensureWinding(
         shape.contour.map(([x, y]) => [
-          (x - sourceCenterX) * fitScale,
-          targetCenterZ - (y - sourceCenterY) * fitScale,
+          (x - sourceCenterX) * fitScaleX,
+          targetCenterZ - (y - sourceCenterY) * fitScaleY,
         ]),
         "ccw",
       ),
@@ -551,7 +560,7 @@ function removeClosingPoint(loop: Vec2[]): Vec2[] {
   return loop;
 }
 
-function getCutoutBounds(shapes: FaceCutout["shapes"]) {
+export function getCutoutShapeBounds(shapes: FaceCutout["shapes"]) {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

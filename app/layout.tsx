@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "3D Printable Box Generator",
+  title: "3D Box Generator",
   description: "Generate simple parametric open-top boxes for 3D printing.",
 };
 
