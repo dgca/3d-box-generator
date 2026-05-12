@@ -177,7 +177,7 @@ export function CutoutControls({
             />
           </div>
           <p className="text-xs leading-5 text-zinc-500">
-            Margin and chamfer excluded.
+            Margin and corner area excluded.
           </p>
         </div>
 

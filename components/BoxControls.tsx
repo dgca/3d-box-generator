@@ -2,6 +2,7 @@ import type {
   BoxDimensions,
   BoxField,
   BoxParams,
+  CornerStyle,
   CutoutAssignmentMode,
   CutoutPairName,
   CutoutSet,
@@ -26,7 +27,7 @@ type BoxControlsProps = {
   cutouts: CutoutSet;
   dimensions: BoxDimensions;
   issues: ValidationIssue[];
-  maxCornerChamfer: number;
+  maxCornerAmount: number;
   onActiveFaceChange: (face: FaceName) => void;
   onActivePairChange: (pair: CutoutPairName) => void;
   onChange: (params: BoxParams) => void;
@@ -45,7 +46,13 @@ const FIELDS: FieldConfig[] = [
   { key: "interiorHeight", label: "Interior height", min: 1, step: 0.5 },
   { key: "wallThickness", label: "Wall thickness", min: 0.2, step: 0.1 },
   { key: "floorThickness", label: "Floor thickness", min: 0.2, step: 0.1 },
-  { key: "cornerRadius", label: "Corner chamfer", min: 0, step: 0.5 },
+  { key: "cornerRadius", label: "Corner amount", min: 0, step: 0.5 },
+];
+
+const CORNER_STYLES: Array<{ label: string; value: CornerStyle }> = [
+  { label: "Sharp", value: "sharp" },
+  { label: "Chamfer", value: "chamfer" },
+  { label: "Rounded", value: "rounded" },
 ];
 
 export function BoxControls({
@@ -55,7 +62,7 @@ export function BoxControls({
   cutouts,
   dimensions,
   issues,
-  maxCornerChamfer,
+  maxCornerAmount,
   onActiveFaceChange,
   onActivePairChange,
   onChange,
@@ -96,9 +103,39 @@ export function BoxControls({
       </div>
 
       <div className="grid gap-4">
+        <div className="grid gap-2">
+          <span className="text-sm font-medium text-zinc-800">
+            Corner style
+          </span>
+          <div className="grid grid-cols-3 gap-1 rounded-md bg-zinc-100 p-1">
+            {CORNER_STYLES.map((style) => (
+              <button
+                aria-pressed={params.cornerStyle === style.value}
+                className={`h-9 rounded px-2 text-xs font-semibold transition ${
+                  params.cornerStyle === style.value
+                    ? "bg-white text-zinc-950 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-950"
+                }`}
+                key={style.value}
+                onClick={() =>
+                  onChange({
+                    ...params,
+                    cornerStyle: style.value,
+                  })
+                }
+                type="button"
+              >
+                {style.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {FIELDS.map((field) => {
           const issue = issuesByField.get(field.key);
           const inputId = `box-${field.key}`;
+          const isDisabled =
+            field.key === "cornerRadius" && params.cornerStyle === "sharp";
           const value = params[field.key];
 
           return (
@@ -110,11 +147,12 @@ export function BoxControls({
               <input
                 aria-describedby={issue ? `${inputId}-error` : undefined}
                 aria-invalid={Boolean(issue)}
-                className="h-11 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-base text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-teal-600 focus:bg-white focus:ring-3 focus:ring-teal-100 aria-invalid:border-rose-500 aria-invalid:focus:ring-rose-100"
+                className="h-11 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-base text-zinc-950 outline-none transition placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 focus:border-teal-600 focus:bg-white focus:ring-3 focus:ring-teal-100 aria-invalid:border-rose-500 aria-invalid:focus:ring-rose-100"
+                disabled={isDisabled}
                 id={inputId}
                 inputMode="decimal"
                 max={
-                  field.key === "cornerRadius" ? maxCornerChamfer : undefined
+                  field.key === "cornerRadius" ? maxCornerAmount : undefined
                 }
                 min={field.min}
                 onChange={(event) =>

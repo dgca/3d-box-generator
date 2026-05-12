@@ -13,7 +13,7 @@ import {
   DEFAULT_BOX_PARAMS,
   clampBoxParams,
   generateOpenBoxGeometry,
-  getMaxCornerChamfer,
+  getMaxCornerAmount,
   getOuterDimensions,
   validateBoxParams,
 } from "@/lib/geometry/box";
@@ -50,8 +50,8 @@ export function BoxGenerator() {
     () => getOuterDimensions(safeParams),
     [safeParams],
   );
-  const maxCornerChamfer = useMemo(
-    () => getMaxCornerChamfer(safeParams),
+  const maxCornerAmount = useMemo(
+    () => getMaxCornerAmount(safeParams),
     [safeParams],
   );
   const canExport = issues.length === 0;
@@ -177,7 +177,7 @@ export function BoxGenerator() {
             cutouts={cutouts}
             dimensions={outerDimensions}
             issues={issues}
-            maxCornerChamfer={maxCornerChamfer}
+            maxCornerAmount={maxCornerAmount}
             onActiveFaceChange={setActiveFace}
             onActivePairChange={setActivePair}
             onClearCutout={clearCutout}

@@ -3,6 +3,7 @@ import polygonClipping from "polygon-clipping";
 import type {
   BoxDimensions,
   BoxParams,
+  CornerStyle,
   CutoutSet,
   FaceCutout,
   FaceName,
@@ -22,6 +23,7 @@ type Polygon = PolygonRing[];
 type MultiPolygon = Polygon[];
 
 export const DEFAULT_BOX_PARAMS: BoxParams = {
+  cornerStyle: "chamfer",
   interiorWidth: 75,
   interiorDepth: 125,
   interiorHeight: 35,
@@ -38,11 +40,19 @@ export function getOuterDimensions(params: BoxParams): BoxDimensions {
   };
 }
 
-export function getMaxCornerChamfer(params: BoxParams): number {
+export function getMaxCornerAmount(params: BoxParams): number {
   const width = finiteOr(params.interiorWidth, DEFAULT_BOX_PARAMS.interiorWidth);
   const depth = finiteOr(params.interiorDepth, DEFAULT_BOX_PARAMS.interiorDepth);
 
   return Math.max(0, Math.min(width, depth) / 4);
+}
+
+export function getCornerInset(params: BoxParams): number {
+  if (normalizeCornerStyle(params.cornerStyle) === "sharp") {
+    return 0;
+  }
+
+  return Math.min(params.cornerRadius, getMaxCornerAmount(params));
 }
 
 export function validateBoxParams(params: BoxParams): ValidationIssue[] {
@@ -54,11 +64,17 @@ export function validateBoxParams(params: BoxParams): ValidationIssue[] {
     "interiorHeight",
     "wallThickness",
     "floorThickness",
-    "cornerRadius",
   ] satisfies Array<keyof BoxParams>) {
     if (!Number.isFinite(params[field])) {
       issues.push({ field, message: "Enter a number." });
     }
+  }
+
+  if (
+    normalizeCornerStyle(params.cornerStyle) !== "sharp" &&
+    !Number.isFinite(params.cornerRadius)
+  ) {
+    issues.push({ field: "cornerRadius", message: "Enter a number." });
   }
 
   for (const field of [
@@ -80,27 +96,35 @@ export function validateBoxParams(params: BoxParams): ValidationIssue[] {
     }
   }
 
-  if (Number.isFinite(params.cornerRadius) && params.cornerRadius < 0) {
+  const shouldValidateCornerAmount =
+    normalizeCornerStyle(params.cornerStyle) !== "sharp";
+
+  if (
+    shouldValidateCornerAmount &&
+    Number.isFinite(params.cornerRadius) &&
+    params.cornerRadius < 0
+  ) {
     issues.push({
       field: "cornerRadius",
       message: "Cannot be negative.",
     });
   }
 
-  const canCheckChamfer =
+  const canCheckCornerAmount =
     Number.isFinite(params.interiorWidth) &&
     Number.isFinite(params.interiorDepth) &&
     params.interiorWidth >= MIN_DIMENSION_MM &&
     params.interiorDepth >= MIN_DIMENSION_MM;
-  const maxChamfer = getMaxCornerChamfer(params);
+  const maxCornerAmount = getMaxCornerAmount(params);
   if (
-    canCheckChamfer &&
+    canCheckCornerAmount &&
+    shouldValidateCornerAmount &&
     Number.isFinite(params.cornerRadius) &&
-    params.cornerRadius > maxChamfer
+    params.cornerRadius > maxCornerAmount
   ) {
     issues.push({
       field: "cornerRadius",
-      message: `Keep chamfer at or below ${formatMm(maxChamfer)} mm.`,
+      message: `Keep corner amount at or below ${formatMm(maxCornerAmount)} mm.`,
     });
   }
 
@@ -109,6 +133,7 @@ export function validateBoxParams(params: BoxParams): ValidationIssue[] {
 
 export function clampBoxParams(params: BoxParams): BoxParams {
   const next: BoxParams = {
+    cornerStyle: normalizeCornerStyle(params.cornerStyle),
     interiorWidth: Math.max(
       MIN_DIMENSION_MM,
       finiteOr(params.interiorWidth, DEFAULT_BOX_PARAMS.interiorWidth),
@@ -137,7 +162,7 @@ export function clampBoxParams(params: BoxParams): BoxParams {
 
   return {
     ...next,
-    cornerRadius: Math.min(next.cornerRadius, getMaxCornerChamfer(next)),
+    cornerRadius: Math.min(next.cornerRadius, getMaxCornerAmount(next)),
   };
 }
 
@@ -149,16 +174,18 @@ export function generateOpenBoxGeometry(
   const dimensions = getOuterDimensions(params);
   const zFloor = params.floorThickness;
   const zTop = dimensions.outerHeight;
-  const chamfer = Math.min(params.cornerRadius, getMaxCornerChamfer(params));
-  const outerLoop = chamferedRectanglePoints(
+  const cornerInset = getCornerInset(params);
+  const outerLoop = corneredRectanglePoints(
     dimensions.outerWidth,
     dimensions.outerDepth,
-    chamfer,
+    cornerInset,
+    params.cornerStyle,
   );
-  const innerLoop = chamferedRectanglePoints(
+  const innerLoop = corneredRectanglePoints(
     params.interiorWidth,
     params.interiorDepth,
-    chamfer,
+    cornerInset,
+    params.cornerStyle,
   );
   const outerBottom = loopAtZ(outerLoop, 0);
   const outerTop = loopAtZ(outerLoop, zTop);
@@ -168,7 +195,7 @@ export function generateOpenBoxGeometry(
 
   addCap(triangles, outerBottom, "down");
   addWallsWithOptionalCutouts({
-    chamfer,
+    cornerInset,
     cutouts,
     dimensions,
     innerFloor,
@@ -182,6 +209,19 @@ export function generateOpenBoxGeometry(
   addTopRim(triangles, outerTop, innerTop);
 
   return { triangles, dimensions };
+}
+
+function corneredRectanglePoints(
+  width: number,
+  depth: number,
+  cornerInset: number,
+  style: CornerStyle,
+): Vec2[] {
+  if (style === "rounded") {
+    return roundedRectanglePoints(width, depth, cornerInset);
+  }
+
+  return chamferedRectanglePoints(width, depth, cornerInset);
 }
 
 function chamferedRectanglePoints(
@@ -214,6 +254,64 @@ function chamferedRectanglePoints(
   ];
 }
 
+function roundedRectanglePoints(
+  width: number,
+  depth: number,
+  radius: number,
+): Vec2[] {
+  const halfWidth = width / 2;
+  const halfDepth = depth / 2;
+  const r = Math.min(radius, halfWidth - EPSILON, halfDepth - EPSILON);
+  const segments = 8;
+
+  if (r <= EPSILON) {
+    return chamferedRectanglePoints(width, depth, 0);
+  }
+
+  const points: Vec2[] = [
+    [-halfWidth + r, -halfDepth],
+    [halfWidth - r, -halfDepth],
+  ];
+
+  appendArc(points, [halfWidth - r, -halfDepth + r], r, -Math.PI / 2, 0);
+  points.push([halfWidth, halfDepth - r]);
+  appendArc(points, [halfWidth - r, halfDepth - r], r, 0, Math.PI / 2);
+  points.push([-halfWidth + r, halfDepth]);
+  appendArc(points, [-halfWidth + r, halfDepth - r], r, Math.PI / 2, Math.PI);
+  points.push([-halfWidth, -halfDepth + r]);
+  appendArc(
+    points,
+    [-halfWidth + r, -halfDepth + r],
+    r,
+    Math.PI,
+    Math.PI * 1.5,
+    false,
+  );
+
+  return removeClosingPoint(points);
+
+  function appendArc(
+    target: Vec2[],
+    [centerX, centerY]: Vec2,
+    arcRadius: number,
+    startAngle: number,
+    endAngle: number,
+    includeEnd = true,
+  ) {
+    const maxStep = includeEnd ? segments : segments - 1;
+
+    for (let step = 1; step <= maxStep; step += 1) {
+      const t = step / segments;
+      const angle = startAngle + (endAngle - startAngle) * t;
+
+      target.push([
+        centerX + Math.cos(angle) * arcRadius,
+        centerY + Math.sin(angle) * arcRadius,
+      ]);
+    }
+  }
+}
+
 function loopAtZ(loop: Vec2[], z: number): Vec3[] {
   return loop.map(([x, y]) => [x, y, z]);
 }
@@ -229,7 +327,7 @@ function addCap(triangles: Triangle[], loop: Vec3[], direction: "up" | "down") {
 }
 
 function addWallsWithOptionalCutouts({
-  chamfer,
+  cornerInset,
   cutouts,
   dimensions,
   innerFloor,
@@ -239,7 +337,7 @@ function addWallsWithOptionalCutouts({
   params,
   triangles,
 }: {
-  chamfer: number;
+  cornerInset: number;
   cutouts?: CutoutSet;
   dimensions: BoxDimensions;
   innerFloor: Vec3[];
@@ -250,13 +348,20 @@ function addWallsWithOptionalCutouts({
   triangles: Triangle[];
 }) {
   for (let index = 0; index < outerBottom.length; index += 1) {
-    const face = getFaceForEdge(index, outerBottom.length);
+    const face = getFaceForEdge(outerBottom, index);
     const cutout = face ? cutouts?.[face] : undefined;
 
     const didAddCutout =
       face &&
       isCutoutReady(cutout) &&
-      addCutoutWallPanel(triangles, params, dimensions, chamfer, face, cutout);
+      addCutoutWallPanel(
+        triangles,
+        params,
+        dimensions,
+        cornerInset,
+        face,
+        cutout,
+      );
 
     if (!didAddCutout) {
       addOuterWallEdge(triangles, outerBottom, outerTop, index);
@@ -582,21 +687,20 @@ export function getCutoutShapeBounds(shapes: FaceCutout["shapes"]) {
   return { maxX, maxY, minX, minY };
 }
 
-function getFaceForEdge(index: number, edgeCount: number): FaceName | null {
-  if (edgeCount === 4) {
-    return (["front", "right", "back", "left"] as const)[index] ?? null;
+function getFaceForEdge(loop: Vec3[], index: number): FaceName | null {
+  const nextIndex = (index + 1) % loop.length;
+  const [x1, y1] = loop[index];
+  const [x2, y2] = loop[nextIndex];
+
+  if (Math.abs(y1 - y2) <= EPSILON && Math.abs(x1 - x2) > EPSILON) {
+    return y1 < 0 ? "front" : "back";
   }
 
-  return (
-    (
-      {
-        0: "front",
-        2: "right",
-        4: "back",
-        6: "left",
-      } as Partial<Record<number, FaceName>>
-    )[index] ?? null
-  );
+  if (Math.abs(x1 - x2) <= EPSILON && Math.abs(y1 - y2) > EPSILON) {
+    return x1 > 0 ? "right" : "left";
+  }
+
+  return null;
 }
 
 function isCutoutReady(cutout: FaceCutout | undefined): cutout is FaceCutout {
@@ -631,6 +735,14 @@ function toVector2([x, y]: Vec2): Vector2 {
 
 function finiteOr(value: number, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeCornerStyle(style: CornerStyle | undefined): CornerStyle {
+  if (style === "sharp" || style === "rounded") {
+    return style;
+  }
+
+  return "chamfer";
 }
 
 function formatMm(value: number): string {

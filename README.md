@@ -1,6 +1,6 @@
 # 3D Box Generator
 
-An MVP web app for generating simple open-top rectangular boxes for 3D printing with configurable interior dimensions, wall thickness, floor thickness, and vertical corner chamfer.
+An MVP web app for generating simple open-top rectangular boxes for 3D printing with configurable interior dimensions, wall thickness, floor thickness, and corner style.
 
 The app renders a browser preview with Three.js and exports an ASCII STL mesh in millimeters. Simple SVG silhouettes can be assigned to the four vertical walls and are generated as real through-cutouts in the exported mesh.
 
@@ -35,7 +35,7 @@ pnpm lint
 - Open-top box body only
 - Manual mesh generation for predictable STL output
 - Interior dimensions are entered in millimeters
-- Corner control is a chamfer, not a true rounded fillet
+- Corner control supports sharp, chamfered, and rounded vertical corners
 - SVG cutouts on front, right, back, and left walls
 - Cutouts can be edited per face or applied to opposite face pairs
 - Cutout controls show usable artwork dimensions for the selected wall
@@ -51,7 +51,7 @@ pnpm lint
 - Raster images are not traced yet; convert PNG/JPG artwork to SVG first
 - No boolean operations or arbitrary CAD features
 - No slicer-specific printability analysis
-- Chamfered corners use the same chamfer value on the inner and outer loops, so corner wall thickness is intentionally simple rather than CAD-offset exact
+- Styled corners use the same corner amount on the inner and outer loops, so corner wall thickness is intentionally simple rather than CAD-offset exact
 
 ## Next Steps
 

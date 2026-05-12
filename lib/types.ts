@@ -1,4 +1,5 @@
 export type BoxParams = {
+  cornerStyle: CornerStyle;
   interiorWidth: number;
   interiorDepth: number;
   interiorHeight: number;
@@ -7,7 +8,8 @@ export type BoxParams = {
   cornerRadius: number;
 };
 
-export type BoxField = keyof BoxParams;
+export type BoxField = Exclude<keyof BoxParams, "cornerStyle">;
+export type CornerStyle = "sharp" | "chamfer" | "rounded";
 export type FaceName = "front" | "right" | "back" | "left";
 export type CutoutAssignmentMode = "faces" | "pairs";
 export type CutoutFitMode = "contain" | "stretch";

@@ -14,8 +14,8 @@ import type {
   Vec2,
 } from "@/lib/types";
 import {
+  getCornerInset,
   getCutoutShapeBounds,
-  getMaxCornerChamfer,
   getOuterDimensions,
 } from "@/lib/geometry/box";
 
@@ -29,7 +29,10 @@ export const FACE_LABELS: Record<FaceName, string> = {
   left: "Left",
 };
 
-export const CUTOUT_PAIR_LABELS: Record<(typeof CUTOUT_PAIR_NAMES)[number], string> = {
+export const CUTOUT_PAIR_LABELS: Record<
+  (typeof CUTOUT_PAIR_NAMES)[number],
+  string
+> = {
   frontBack: "Front / Back",
   leftRight: "Left / Right",
 };
@@ -45,8 +48,8 @@ export const CUTOUT_PAIR_FACES: Record<
 const DEFAULT_CUTOUT: FaceCutout = {
   enabled: false,
   fitMode: "contain",
-  margin: 6,
-  scale: 0.82,
+  margin: 4,
+  scale: 1,
   shapes: [],
 };
 
@@ -88,7 +91,9 @@ export function parseSvgCutout(svgText: string): CutoutShape[] {
 
     for (const shape of SVGLoader.createShapes(path)) {
       const points = shape.extractPoints(12);
-      const contour = cleanLoop(points.shape.map((point) => [point.x, point.y]));
+      const contour = cleanLoop(
+        points.shape.map((point) => [point.x, point.y]),
+      );
 
       if (contour.length < 3 || Math.abs(getSignedArea(contour)) < 0.001) {
         continue;
@@ -118,7 +123,7 @@ export function validateCutouts(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const dimensions = getOuterDimensions(params);
-  const chamfer = Math.min(params.cornerRadius, getMaxCornerChamfer(params));
+  const cornerInset = getCornerInset(params);
 
   for (const face of FACE_NAMES) {
     const cutout = cutouts[face];
@@ -138,8 +143,8 @@ export function validateCutouts(
 
     const flatWidth =
       face === "front" || face === "back"
-        ? params.interiorWidth - chamfer * 2
-        : params.interiorDepth - chamfer * 2;
+        ? params.interiorWidth - cornerInset * 2
+        : params.interiorDepth - cornerInset * 2;
     const safeWidth = flatWidth - cutout.margin * 2;
     const safeHeight =
       dimensions.outerHeight - params.floorThickness - cutout.margin * 2;
@@ -161,11 +166,11 @@ export function getCutoutDesignMetrics(
   cutout: FaceCutout,
 ) {
   const dimensions = getOuterDimensions(params);
-  const chamfer = Math.min(params.cornerRadius, getMaxCornerChamfer(params));
+  const cornerInset = getCornerInset(params);
   const flatWidth =
     face === "front" || face === "back"
-      ? params.interiorWidth - chamfer * 2
-      : params.interiorDepth - chamfer * 2;
+      ? params.interiorWidth - cornerInset * 2
+      : params.interiorDepth - cornerInset * 2;
   const margin = Math.max(0, finiteOr(cutout.margin, 0));
   const usableWidth = Math.max(0, flatWidth - margin * 2);
   const usableHeight = Math.max(
@@ -205,14 +210,12 @@ export function getCutoutDesignMetrics(
   const containScale =
     Math.min(usableWidth / sourceWidth, usableHeight / sourceHeight) * artScale;
   const shouldStretch = (cutout.fitMode ?? "contain") === "stretch";
-  const scaleX =
-    shouldStretch
-      ? (usableWidth / sourceWidth) * artScale
-      : containScale;
-  const scaleY =
-    shouldStretch
-      ? (usableHeight / sourceHeight) * artScale
-      : containScale;
+  const scaleX = shouldStretch
+    ? (usableWidth / sourceWidth) * artScale
+    : containScale;
+  const scaleY = shouldStretch
+    ? (usableHeight / sourceHeight) * artScale
+    : containScale;
 
   return {
     face,
@@ -308,8 +311,10 @@ function cleanLoop(points: Vec2[]): Vec2[] {
 }
 
 function getSignedArea(points: Vec2[]): number {
-  return points.reduce((area, point, index) => {
-    const next = points[(index + 1) % points.length];
-    return area + point[0] * next[1] - next[0] * point[1];
-  }, 0) / 2;
+  return (
+    points.reduce((area, point, index) => {
+      const next = points[(index + 1) % points.length];
+      return area + point[0] * next[1] - next[0] * point[1];
+    }, 0) / 2
+  );
 }
