@@ -11,10 +11,24 @@ export type BoxParams = {
 export type BoxField = Exclude<keyof BoxParams, "cornerStyle">;
 export type CornerStyle = "sharp" | "chamfer" | "rounded";
 export type FaceName = "front" | "right" | "back" | "left";
+export type PartMode = "body" | "lid";
 export type CutoutAssignmentMode = "faces" | "pairs";
 export type CutoutFitMode = "contain" | "stretch";
 export type CutoutPairName = "frontBack" | "leftRight";
 export type CutoutTarget = FaceName | CutoutPairName;
+export type LidCutDepth = "top" | "through";
+export type LidSeatStyle = "plug" | "rimGroove";
+
+export type LidParams = {
+  clearance: number;
+  cutDepth: LidCutDepth;
+  overhang: number;
+  plugDepth: number;
+  seatStyle: LidSeatStyle;
+  topThickness: number;
+};
+
+export type LidField = Exclude<keyof LidParams, "cutDepth" | "seatStyle">;
 
 export type BoxDimensions = {
   outerWidth: number;
@@ -41,6 +55,8 @@ export type FaceCutout = {
 };
 
 export type CutoutSet = Record<FaceName, FaceCutout>;
+export type CutoutMap = Partial<Record<FaceName, FaceCutout>>;
+export type LidCutout = FaceCutout;
 
 export type MeshData = {
   triangles: Triangle[];
@@ -50,5 +66,6 @@ export type MeshData = {
 export type ValidationIssue = {
   face?: FaceName;
   field?: BoxField;
+  lidField?: LidField;
   message: string;
 };

@@ -5,6 +5,7 @@ import {
 } from "three/examples/jsm/loaders/SVGLoader.js";
 import type {
   BoxParams,
+  CutoutMap,
   CutoutSet,
   CutoutShape,
   CutoutTarget,
@@ -12,12 +13,12 @@ import type {
   FaceName,
   ValidationIssue,
   Vec2,
-} from "@/lib/types";
+} from "../types";
 import {
   getCornerInset,
   getCutoutShapeBounds,
   getOuterDimensions,
-} from "@/lib/geometry/box";
+} from "./box";
 
 export const FACE_NAMES: FaceName[] = ["front", "right", "back", "left"];
 export const CUTOUT_PAIR_NAMES = ["frontBack", "leftRight"] as const;
@@ -57,9 +58,13 @@ const MIN_CUTOUT_SCALE = 0.05;
 
 export function createDefaultCutouts(): CutoutSet {
   return FACE_NAMES.reduce((cutouts, face) => {
-    cutouts[face] = { ...DEFAULT_CUTOUT };
+    cutouts[face] = createDefaultCutout();
     return cutouts;
   }, {} as CutoutSet);
+}
+
+export function createDefaultCutout(): FaceCutout {
+  return { ...DEFAULT_CUTOUT };
 }
 
 export function getCutoutTargetFaces(target: CutoutTarget): FaceName[] {
@@ -119,7 +124,7 @@ export function parseSvgCutout(svgText: string): CutoutShape[] {
 
 export function validateCutouts(
   params: BoxParams,
-  cutouts: CutoutSet,
+  cutouts: CutoutMap,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const dimensions = getOuterDimensions(params);
@@ -128,7 +133,7 @@ export function validateCutouts(
   for (const face of FACE_NAMES) {
     const cutout = cutouts[face];
 
-    if (!cutout.enabled) {
+    if (!cutout?.enabled) {
       continue;
     }
 

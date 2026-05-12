@@ -3,23 +3,36 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { MeshData } from "@/lib/types";
+import type { MeshData, Vec3 } from "@/lib/types";
+
+export type PreviewMesh = {
+  color?: number;
+  meshData: MeshData;
+  opacity?: number;
+  position?: Vec3;
+};
 
 type BoxPreviewProps = {
-  meshData: MeshData;
+  meshes: PreviewMesh[];
+  viewKey: string;
 };
 
 type PreviewScene = {
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
-  mesh: THREE.Mesh;
+  meshes: THREE.Mesh[];
   renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
 };
 
-export function BoxPreview({ meshData }: BoxPreviewProps) {
+export function BoxPreview({ meshes, viewKey }: BoxPreviewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasFramedCameraRef = useRef(false);
   const sceneRef = useRef<PreviewScene | null>(null);
+
+  useEffect(() => {
+    hasFramedCameraRef.current = false;
+  }, [viewKey]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -47,18 +60,8 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
     controls.autoRotate = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.maxPolarAngle = Math.PI * 0.48;
+    controls.maxPolarAngle = Math.PI;
     controls.minDistance = 25;
-
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x43a6a3,
-      metalness: 0.02,
-      roughness: 0.58,
-    });
-    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
 
     const grid = new THREE.GridHelper(360, 24, 0xc8cdd7, 0xe1e4ea);
     grid.rotation.x = Math.PI / 2;
@@ -108,15 +111,14 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
       renderer.render(scene, camera);
     };
 
-    sceneRef.current = { camera, controls, mesh, renderer };
+    sceneRef.current = { camera, controls, meshes: [], renderer, scene };
     animate();
 
     return () => {
       window.cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       controls.dispose();
-      mesh.geometry.dispose();
-      material.dispose();
+      clearPreviewMeshes(sceneRef.current);
       grid.geometry.dispose();
       floor.geometry.dispose();
       renderer.dispose();
@@ -133,17 +135,35 @@ export function BoxPreview({ meshData }: BoxPreviewProps) {
       return;
     }
 
-    const geometry = meshDataToBufferGeometry(meshData);
-    preview.mesh.geometry.dispose();
-    preview.mesh.geometry = geometry;
+    clearPreviewMeshes(preview);
+
+    for (const mesh of meshes) {
+      const geometry = meshDataToBufferGeometry(mesh.meshData);
+      const opacity = mesh.opacity ?? 1;
+      const material = new THREE.MeshStandardMaterial({
+        color: mesh.color ?? 0x43a6a3,
+        metalness: 0.02,
+        opacity,
+        roughness: 0.58,
+        transparent: opacity < 1,
+      });
+      const object = new THREE.Mesh(geometry, material);
+      const position = mesh.position ?? [0, 0, 0];
+
+      object.position.set(position[0], position[1], position[2]);
+      object.castShadow = opacity >= 1;
+      object.receiveShadow = true;
+      preview.scene.add(object);
+      preview.meshes.push(object);
+    }
 
     if (hasFramedCameraRef.current) {
-      updateCameraBounds(preview.camera, preview.controls, meshData);
+      updateCameraBounds(preview.camera, preview.controls, meshes);
     } else {
-      fitCamera(preview.camera, preview.controls, meshData);
+      fitCamera(preview.camera, preview.controls, meshes);
       hasFramedCameraRef.current = true;
     }
-  }, [meshData]);
+  }, [meshes]);
 
   return (
     <div
@@ -175,12 +195,33 @@ function meshDataToBufferGeometry(meshData: MeshData) {
   return geometry;
 }
 
+function clearPreviewMeshes(preview: PreviewScene | null) {
+  if (!preview) {
+    return;
+  }
+
+  for (const mesh of preview.meshes) {
+    preview.scene.remove(mesh);
+    mesh.geometry.dispose();
+
+    if (Array.isArray(mesh.material)) {
+      for (const material of mesh.material) {
+        material.dispose();
+      }
+    } else {
+      mesh.material.dispose();
+    }
+  }
+
+  preview.meshes = [];
+}
+
 function fitCamera(
   camera: THREE.PerspectiveCamera,
   controls: OrbitControls,
-  meshData: MeshData,
+  meshes: PreviewMesh[],
 ) {
-  const { distance, targetZ } = getCameraFrame(meshData);
+  const { distance, targetZ } = getCameraFrame(meshes);
 
   controls.target.set(0, 0, targetZ);
   camera.near = Math.max(0.1, distance / 1000);
@@ -193,9 +234,9 @@ function fitCamera(
 function updateCameraBounds(
   camera: THREE.PerspectiveCamera,
   controls: OrbitControls,
-  meshData: MeshData,
+  meshes: PreviewMesh[],
 ) {
-  const { distance, targetZ } = getCameraFrame(meshData);
+  const { distance, targetZ } = getCameraFrame(meshes);
   const previousTarget = controls.target.clone();
   const nextTarget = new THREE.Vector3(0, 0, targetZ);
   const cameraOffset = camera.position.clone().sub(previousTarget);
@@ -208,12 +249,51 @@ function updateCameraBounds(
   controls.update();
 }
 
-function getCameraFrame(meshData: MeshData) {
-  const { outerDepth, outerHeight, outerWidth } = meshData.dimensions;
-  const maxDimension = Math.max(outerWidth, outerDepth, outerHeight);
+function getCameraFrame(meshes: PreviewMesh[]) {
+  const bounds = getPreviewBounds(meshes);
+  const maxDimension = Math.max(
+    bounds.maxX - bounds.minX,
+    bounds.maxY - bounds.minY,
+    bounds.maxZ - bounds.minZ,
+  );
 
   return {
     distance: Math.max(120, maxDimension * 1.85),
-    targetZ: outerHeight * 0.45,
+    targetZ: (bounds.minZ + bounds.maxZ) / 2,
   };
+}
+
+function getPreviewBounds(meshes: PreviewMesh[]) {
+  if (meshes.length === 0) {
+    return {
+      maxX: 50,
+      maxY: 50,
+      maxZ: 50,
+      minX: -50,
+      minY: -50,
+      minZ: 0,
+    };
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+
+  for (const mesh of meshes) {
+    const [x, y, z] = mesh.position ?? [0, 0, 0];
+    const halfWidth = mesh.meshData.dimensions.outerWidth / 2;
+    const halfDepth = mesh.meshData.dimensions.outerDepth / 2;
+
+    minX = Math.min(minX, x - halfWidth);
+    maxX = Math.max(maxX, x + halfWidth);
+    minY = Math.min(minY, y - halfDepth);
+    maxY = Math.max(maxY, y + halfDepth);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z + mesh.meshData.dimensions.outerHeight);
+  }
+
+  return { maxX, maxY, maxZ, minX, minY, minZ };
 }

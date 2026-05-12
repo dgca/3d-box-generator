@@ -4,7 +4,7 @@ import type {
   BoxDimensions,
   BoxParams,
   CornerStyle,
-  CutoutSet,
+  CutoutMap,
   FaceCutout,
   FaceName,
   MeshData,
@@ -12,7 +12,7 @@ import type {
   ValidationIssue,
   Vec2,
   Vec3,
-} from "@/lib/types";
+} from "../types";
 
 const EPSILON = 0.000001;
 const MIN_DIMENSION_MM = 1;
@@ -168,20 +168,20 @@ export function clampBoxParams(params: BoxParams): BoxParams {
 
 export function generateOpenBoxGeometry(
   input: BoxParams,
-  cutouts?: CutoutSet,
+  cutouts?: CutoutMap,
 ): MeshData {
   const params = clampBoxParams(input);
   const dimensions = getOuterDimensions(params);
   const zFloor = params.floorThickness;
   const zTop = dimensions.outerHeight;
   const cornerInset = getCornerInset(params);
-  const outerLoop = corneredRectanglePoints(
+  const outerLoop = getCorneredRectanglePoints(
     dimensions.outerWidth,
     dimensions.outerDepth,
     cornerInset,
     params.cornerStyle,
   );
-  const innerLoop = corneredRectanglePoints(
+  const innerLoop = getCorneredRectanglePoints(
     params.interiorWidth,
     params.interiorDepth,
     cornerInset,
@@ -211,7 +211,7 @@ export function generateOpenBoxGeometry(
   return { triangles, dimensions };
 }
 
-function corneredRectanglePoints(
+export function getCorneredRectanglePoints(
   width: number,
   depth: number,
   cornerInset: number,
@@ -338,7 +338,7 @@ function addWallsWithOptionalCutouts({
   triangles,
 }: {
   cornerInset: number;
-  cutouts?: CutoutSet;
+  cutouts?: CutoutMap;
   dimensions: BoxDimensions;
   innerFloor: Vec3[];
   innerTop: Vec3[];

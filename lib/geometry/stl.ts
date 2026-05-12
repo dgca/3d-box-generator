@@ -1,4 +1,4 @@
-import type { MeshData, Triangle, Vec3 } from "@/lib/types";
+import type { MeshData, Triangle, Vec3 } from "../types";
 
 export function meshToAsciiStl(mesh: MeshData, solidName = "parametric_box") {
   const safeName = solidName.replace(/[^a-z0-9_-]+/gi, "_");
