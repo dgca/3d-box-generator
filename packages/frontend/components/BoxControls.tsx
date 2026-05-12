@@ -10,7 +10,7 @@ import type {
   FaceName,
   CutoutTarget,
   ValidationIssue,
-} from "@/lib/types";
+} from "3d-box-generator";
 import { CutoutControls } from "@/components/CutoutControls";
 
 type FieldConfig = {

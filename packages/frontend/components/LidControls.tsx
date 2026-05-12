@@ -1,5 +1,7 @@
-import { getCutoutPointCount } from "@/lib/geometry/cutouts";
-import { getLidCutoutDesignMetrics } from "@/lib/geometry/lid";
+import {
+  getCutoutPointCount,
+  getLidCutoutDesignMetrics,
+} from "3d-box-generator";
 import type {
   BoxParams,
   LidCutDepth,
@@ -8,7 +10,7 @@ import type {
   LidParams,
   LidSeatStyle,
   ValidationIssue,
-} from "@/lib/types";
+} from "3d-box-generator";
 
 type FieldConfig = {
   key: LidField;

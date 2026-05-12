@@ -7,7 +7,7 @@ import {
   getCutoutPointCount,
   getCutoutTargetFaces,
   getCutoutTargetLabel,
-} from "@/lib/geometry/cutouts";
+} from "3d-box-generator";
 import type {
   BoxParams,
   CutoutAssignmentMode,
@@ -16,7 +16,7 @@ import type {
   CutoutTarget,
   FaceCutout,
   FaceName,
-} from "@/lib/types";
+} from "3d-box-generator";
 
 type CutoutControlsProps = {
   activeFace: FaceName;

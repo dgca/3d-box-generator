@@ -5,30 +5,24 @@ import { BoxControls } from "@/components/BoxControls";
 import { BoxPreview, type PreviewMesh } from "@/components/BoxPreview";
 import { LidControls } from "@/components/LidControls";
 import {
+  DEFAULT_BOX_PARAMS,
+  DEFAULT_LID_PARAMS,
+  clampBoxParams,
+  clampLidParams,
   createBodyMesh,
   createBodyStl,
-  createLidMesh,
-  createLidStl,
-} from "@/lib";
-import {
   createDefaultCutout,
   createDefaultCutouts,
-  getCutoutTargetFaces,
-  parseSvgCutout,
-  validateCutouts,
-} from "@/lib/geometry/cutouts";
-import {
-  DEFAULT_BOX_PARAMS,
-  clampBoxParams,
+  createLidMesh,
+  createLidStl,
   getMaxCornerAmount,
   getOuterDimensions,
+  getCutoutTargetFaces,
+  parseSvgCutout,
   validateBoxParams,
-} from "@/lib/geometry/box";
-import {
-  DEFAULT_LID_PARAMS,
-  clampLidParams,
+  validateCutouts,
   validateLidParams,
-} from "@/lib/geometry/lid";
+} from "3d-box-generator";
 import type {
   BoxParams,
   CutoutAssignmentMode,
@@ -39,7 +33,7 @@ import type {
   LidCutout,
   LidParams,
   PartMode,
-} from "@/lib/types";
+} from "3d-box-generator";
 
 export function BoxGenerator() {
   const [activePart, setActivePart] = useState<PartMode>("body");

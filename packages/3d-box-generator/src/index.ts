@@ -171,6 +171,7 @@ export type {
   LidParams,
   LidSeatStyle,
   MeshData,
+  PartMode,
   Triangle,
   ValidationIssue,
   Vec2,

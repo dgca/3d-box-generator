@@ -1,0 +1,34 @@
+{
+  "name": "3d-box-generator",
+  "version": "0.1.0",
+  "description": "Headless geometry and STL generation for parametric 3D-printable boxes.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "polygon-clipping": "^0.15.7",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  }
+}

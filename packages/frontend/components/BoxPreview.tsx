@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { MeshData, Vec3 } from "@/lib/types";
+import type { MeshData, Vec3 } from "3d-box-generator";
 
 export type PreviewMesh = {
   color?: number;

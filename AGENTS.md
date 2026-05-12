@@ -1,5 +1,8 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Workspace Notes
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This is a pnpm workspace with:
+
+- `packages/frontend`: Next.js app
+- `packages/3d-box-generator`: publishable headless TypeScript library
+
+When editing the frontend, follow the Next.js instructions in `packages/frontend/AGENTS.md`.
