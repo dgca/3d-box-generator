@@ -266,7 +266,7 @@ export function BoxGenerator() {
   }
 
   return (
-    <main className="flex h-screen flex-col overflow-hidden bg-[#f7f7fb] text-zinc-950">
+    <main className="flex h-dvh flex-col overflow-hidden bg-[#f7f7fb] text-zinc-950">
       <header className="sticky top-0 z-20 flex min-h-20 shrink-0 flex-col gap-4 border-b border-zinc-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
         <div>
           <h1 className="text-xl font-semibold tracking-normal text-zinc-950">
@@ -297,7 +297,7 @@ export function BoxGenerator() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <aside className="max-h-[48vh] w-full shrink-0 overflow-y-auto border-b border-zinc-200 bg-white lg:h-full lg:max-h-none lg:w-[360px] lg:border-r lg:border-b-0">
+        <aside className="app-scrollport max-h-[48vh] w-full shrink-0 overflow-y-auto border-b border-zinc-200 bg-white lg:h-full lg:max-h-none lg:w-[360px] lg:border-r lg:border-b-0">
           <PartModeToggle activePart={activePart} onChange={setActivePart} />
           {activePart === "body" ? (
             <BoxControls
