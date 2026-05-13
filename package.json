@@ -4,7 +4,7 @@
   "private": true,
   "description": "Workspace for the 3D Box Generator frontend and publishable core library.",
   "scripts": {
-    "build": "pnpm --filter 3d-box-generator build && pnpm --filter 3d-box-generator-frontend build",
+    "build": "pnpm --filter 3d-box-generator-frontend build",
     "dev": "pnpm --filter 3d-box-generator build && pnpm --parallel --filter 3d-box-generator --filter 3d-box-generator-frontend dev",
     "lint": "pnpm --filter 3d-box-generator typecheck && pnpm --filter 3d-box-generator-frontend lint"
   },
