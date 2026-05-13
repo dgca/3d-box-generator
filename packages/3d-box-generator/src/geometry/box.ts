@@ -13,6 +13,7 @@ import type {
   Vec2,
   Vec3,
 } from "../types";
+import { repairTJunctions, simplifyPolygonLoop } from "./mesh";
 
 const EPSILON = 0.000001;
 const MIN_DIMENSION_MM = 1;
@@ -208,7 +209,7 @@ export function generateOpenBoxGeometry(
   addCap(triangles, innerFloor, "up");
   addTopRim(triangles, outerTop, innerTop);
 
-  return { triangles, dimensions };
+  return { triangles: repairTJunctions(triangles), dimensions };
 }
 
 export function getCorneredRectanglePoints(
@@ -635,7 +636,9 @@ function normalizeCutoutLoops(loops: Vec2[][]): Vec2[][] {
   return result
     .map((polygon) => polygon[0])
     .filter((ring): ring is Vec2[] => Boolean(ring))
-    .map((ring) => ensureWinding(removeClosingPoint(ring), "ccw"))
+    .map((ring) =>
+      ensureWinding(simplifyPolygonLoop(removeClosingPoint(ring)), "ccw"),
+    )
     .filter((loop) => loop.length >= 3 && Math.abs(getSignedArea(loop)) > 0.001);
 }
 

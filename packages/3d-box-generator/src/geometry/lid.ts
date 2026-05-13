@@ -18,6 +18,7 @@ import {
   getCutoutShapeBounds,
   getOuterDimensions,
 } from "./box";
+import { repairTJunctions, simplifyPolygonLoop } from "./mesh";
 
 const EPSILON = 0.000001;
 const MIN_THICKNESS_MM = 0.2;
@@ -215,7 +216,7 @@ function generatePlugLidGeometry(
       outerHeight: topZ,
       outerWidth: footprints.topWidth,
     },
-    triangles,
+    triangles: repairTJunctions(triangles),
   };
 }
 
@@ -309,7 +310,7 @@ function generateRimGrooveLidGeometry(
       outerHeight: topZ,
       outerWidth: footprints.topWidth,
     },
-    triangles,
+    triangles: repairTJunctions(triangles),
   };
 }
 
@@ -564,7 +565,9 @@ function normalizeCutoutLoops(loops: Vec2[][]): Vec2[][] {
   return result
     .map((polygon) => polygon[0])
     .filter((ring): ring is Vec2[] => Boolean(ring))
-    .map((ring) => ensureWinding(removeClosingPoint(ring), "ccw"))
+    .map((ring) =>
+      ensureWinding(simplifyPolygonLoop(removeClosingPoint(ring)), "ccw"),
+    )
     .filter(
       (loop) => loop.length >= 3 && Math.abs(getSignedArea(loop)) > 0.001,
     );
